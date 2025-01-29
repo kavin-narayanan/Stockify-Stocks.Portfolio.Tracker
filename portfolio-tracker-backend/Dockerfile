@@ -12,3 +12,6 @@ EXPOSE 8080
 
 # Command to run the Spring Boot app
 ENTRYPOINT ["java", "-jar", "app.jar"]
+
+RUN ls -la target/
+
