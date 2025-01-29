@@ -1,17 +1,23 @@
-# Use OpenJDK 17 as the base image
+
+# Use OpenJDK as the base image
 FROM openjdk:17-jdk-slim
 
-# Set the working directory inside the container
+# Set the working directory in the container
 WORKDIR /app
 
-# Copy the jar file from target directory (after building) to the working directory
+# Copy the Maven pom.xml file and the source code
+COPY pom.xml /app/
+COPY src /app/src/
+
+# Run the Maven build to create the JAR file
+RUN mvn clean install
+
+# Copy the JAR file from the target directory (created by Maven build) to the app directory
 COPY target/portfolio-tracker-backend-0.0.1-SNAPSHOT.jar /app/app.jar
 
 # Expose the port the app will run on
 EXPOSE 8080
 
-# Command to run the Spring Boot app
-ENTRYPOINT ["java", "-jar", "app.jar"]
-
-RUN ls -la target/
+# Run the JAR file
+CMD ["java", "-jar", "/app/app.jar"]
 
