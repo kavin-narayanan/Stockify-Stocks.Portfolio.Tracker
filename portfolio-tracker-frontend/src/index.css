@@ -1,0 +1,22 @@
+/* Reset and base styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Work Sans', sans-serif;
+  background-color: #121212;
+  color: #D9E7FF;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+code {
+  font-family: 'IBM Plex Mono', monospace;
+  background-color: #2C2C2C;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  color: #D9E7FF;
+}

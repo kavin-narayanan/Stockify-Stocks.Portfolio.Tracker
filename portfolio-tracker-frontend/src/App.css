@@ -1,0 +1,106 @@
+:root {
+  --primary-color: #00AFFF;
+  --bg-dark: #121212;
+  --text-light: #D9E7FF;
+  --gradient-dark: linear-gradient(135deg, #0d0d0d, #1a1a1a 70%);
+}
+
+/* Responsive containers */
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+/* Responsive typography */
+h1 {
+  font-size: clamp(2rem, 5vw, 4rem);
+  line-height: 1.2;
+}
+
+h2 {
+  font-size: clamp(1.5rem, 4vw, 2.5rem);
+}
+
+h3 {
+  font-size: clamp(1.2rem, 3vw, 2rem);
+}
+
+p {
+  font-size: clamp(1rem, 2vw, 1.2rem);
+}
+
+/* Responsive Grid */
+.grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+}
+
+/* Responsive Cards */
+.card {
+  background: var(--gradient-dark);
+  border-radius: 15px;
+  padding: clamp(1rem, 3vw, 2rem);
+  height: 100%;
+}
+
+/* Responsive Forms */
+.form-group {
+  margin-bottom: 1rem;
+}
+
+input, select, textarea {
+  width: 100%;
+  padding: 0.8rem;
+  border-radius: 8px;
+  border: 1px solid var(--primary-color);
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-light);
+  font-size: clamp(0.9rem, 2vw, 1rem);
+}
+
+/* Animation Classes */
+.fade-in {
+  animation: fadeIn 0.5s ease-in;
+}
+
+.slide-in {
+  animation: slideIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from { transform: translateY(-20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* Media Queries */
+@media (max-width: 768px) {
+  .hide-mobile {
+    display: none;
+  }
+  
+  .flex-column-mobile {
+    flex-direction: column;
+  }
+  
+  .text-center-mobile {
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: 0.5rem;
+  }
+  
+  .card {
+    padding: 1rem;
+  }
+}
