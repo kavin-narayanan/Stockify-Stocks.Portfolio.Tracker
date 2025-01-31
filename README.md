@@ -159,15 +159,16 @@ npm start
 - **CI/CD**: GitHub Actions
 - **Version Control**: Git
 
-## 🔧 Environment Variables
+### Environment Variables
 
-```env
-SPRING_DATASOURCE_URL=jdbc:mysql://<hostname>:<port>/<database>
-SPRING_DATASOURCE_USERNAME=<username>
-SPRING_DATASOURCE_PASSWORD=<password>
-ALPHAVANTAGE_API_KEY=<your_api_key>
-```
+The following environment variables are required for the backend. Add them to your deployment platform ( Render) or a local `.env` file:
 
+| Variable Name              | Description                                   | Example Value                          |
+|----------------------------|-----------------------------------------------|----------------------------------------|
+| `SPRING_DATASOURCE_URL`    | URL for the MySQL database                    | `jdbc:mysql://<hostname>:<port>/<db>`  |
+| `SPRING_DATASOURCE_USERNAME` | Username for the MySQL database             | `root`                                |
+| `SPRING_DATASOURCE_PASSWORD` | Password for the MySQL database             | `your_password`                       |
+| `ALPHAVANTAGE_API_KEY`     | API key for Alpha Vantage stock data          | `YOUR_ALPHA_VANTAGE_API_KEY`           |
 ## 📦 Deployment
 
 ### Backend (Render)
