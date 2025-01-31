@@ -45,7 +45,7 @@ const Home = () => {
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const stocksResponse = await axios.get("http://localhost:8080/stocks/all");
+        const stocksResponse = await axios.get("https://stockify-stocks-portfolio-tracker.onrender.com/stocks/all");
         const updatedStocks = await updateStockPrices(stocksResponse.data);
         setStocks(updatedStocks);
       } catch (err) {

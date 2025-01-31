@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:8080/stocks'; 
+const API_URL = 'https://stockify-stocks-portfolio-tracker.onrender.com/stocks'; 
 
 export const getAllStocks = async () => {
     return axios.get(`${API_URL}/all`);
