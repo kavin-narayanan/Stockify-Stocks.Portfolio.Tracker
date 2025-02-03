@@ -1,87 +1,71 @@
 import axios from 'axios';
 
-// Cache duration increased to 15 minutes due to API rate limits
-const CACHE_DURATION = 15 * 60 * 1000;
+const CACHE_DURATION = 15 * 60 * 1000; // 15 minutes
+const API_KEY = '779Y5LB2Z0025P46';
+const API_BASE_URL = 'https://www.alphavantage.co/query';
 
-// Queue for managing API requests
-let requestQueue = [];
-let isProcessingQueue = false;
-
-// Delay between API calls (5.1 seconds to stay within free tier limits)
-const API_DELAY = 5100;
+const createCacheKey = (symbol) => `stock_${symbol.toUpperCase()}`;
 
 const getCachedStockPrice = (symbol) => {
   try {
-    const cached = localStorage.getItem(`stock_${symbol}`);
+    const cacheKey = createCacheKey(symbol);
+    const cached = localStorage.getItem(cacheKey);
+    
     if (cached) {
-      const parsedCache = JSON.parse(cached);
-      const cacheAge = Date.now() - parsedCache.timestamp;
-      if (cacheAge < CACHE_DURATION) {
-        return parsedCache.price;
-      }
+      const { price, timestamp } = JSON.parse(cached);
+      const cacheAge = Date.now() - timestamp;
+      
+      return cacheAge < CACHE_DURATION ? price : null;
     }
   } catch (error) {
-    console.warn(`Error reading cache for ${symbol}:`, error.message);
+    console.warn(`Cache read error for ${symbol}:`, error);
   }
   return null;
 };
 
 const setCachedStockPrice = (symbol, price) => {
   try {
+    const cacheKey = createCacheKey(symbol);
     const cacheData = {
       price,
-      timestamp: Date.now(),
+      timestamp: Date.now()
     };
-    localStorage.setItem(`stock_${symbol}`, JSON.stringify(cacheData));
+    localStorage.setItem(cacheKey, JSON.stringify(cacheData));
   } catch (error) {
-    console.warn(`Error writing cache for ${symbol}:`, error.message);
+    console.warn(`Cache write error for ${symbol}:`, error);
   }
 };
 
-const processQueue = async () => {
-  if (isProcessingQueue || requestQueue.length === 0) return;
-  
-  isProcessingQueue = true;
-  
-  while (requestQueue.length > 0) {
-    const { symbol, resolve, reject } = requestQueue.shift();
+const fetchStockPrice = async (symbol) => {
+  const params = {
+    function: 'GLOBAL_QUOTE',
+    symbol: symbol.toUpperCase(),
+    apikey: API_KEY
+  };
+
+  try {
+    const response = await axios.get(API_BASE_URL, { params });
+    const quote = response.data['Global Quote'];
     
-    try {
-      const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=779Y5LB2Z0025P46`;
-      const response = await axios.get(url);
-      
-      if (response.data['Global Quote']) {
-        const price = parseFloat(response.data['Global Quote']['05. price']);
-        if (!isNaN(price) && price > 0) {
-          setCachedStockPrice(symbol, price);
-          resolve(price);
-        } else {
-          reject(new Error('Invalid price data'));
-        }
-      } else {
-        reject(new Error('No data available'));
-      }
-    } catch (error) {
-      reject(error);
+    if (quote && quote['05. price']) {
+      const price = parseFloat(quote['05. price']);
+      setCachedStockPrice(symbol, price);
+      return price;
     }
-    
-    // Wait before processing next request
-    await new Promise(resolve => setTimeout(resolve, API_DELAY));
+  } catch (error) {
+    console.error(`Error fetching stock price for ${symbol}:`, error);
   }
-  
-  isProcessingQueue = false;
+  return null;
 };
 
 export const getStockPrice = async (symbol) => {
-  // First check cache
   const cachedPrice = getCachedStockPrice(symbol);
-  if (cachedPrice !== null) {
-    return cachedPrice;
-  }
+  if (cachedPrice !== null) return cachedPrice;
 
-  // If not in cache, add to queue
-  return new Promise((resolve, reject) => {
-    requestQueue.push({ symbol, resolve, reject });
-    processQueue();
-  });
+  return fetchStockPrice(symbol);
+};
+
+export const bulkGetStockPrices = async (symbols) => {
+  const pricePromises = symbols.map(symbol => getStockPrice(symbol));
+  return Promise.all(pricePromises);
 };
