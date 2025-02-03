@@ -11,6 +11,9 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class StockPriceService {
@@ -18,64 +21,63 @@ public class StockPriceService {
     private String apiKey;
 
     private static final String ALPHA_VANTAGE_API_URL = "https://www.alphavantage.co/query";
-    private static final long CACHE_EXPIRY_SECONDS = 86400; // Cache stock prices for 24 hours
+    private static final long CACHE_EXPIRY_SECONDS = 86400; // 24 hours
     private final Map<String, CachedPrice> priceCache = new ConcurrentHashMap<>();
-    private static final double USD_TO_INR = 85.76; // Conversion rate
+    private static final double USD_TO_INR = 85.76;
+    private final ExecutorService executorService = Executors.newFixedThreadPool(5);
 
-    // Fetch the stock price (either from cache or API)
     public Double getStockPrice(String ticker) {
         long currentTime = Instant.now().getEpochSecond();
-
-        // Check if cached price is valid (within 24 hours)
         CachedPrice cachedPrice = priceCache.get(ticker);
+
+        // Return cached price if valid
         if (cachedPrice != null && currentTime - cachedPrice.timestamp <= CACHE_EXPIRY_SECONDS) {
-            return cachedPrice.price * USD_TO_INR; // Convert to INR before returning
+            return cachedPrice.price * USD_TO_INR;
         }
 
-        // Fetch the stock price if not cached or cache expired
-        Double price = fetchStockPrice(ticker);
+        // Fetch and cache new price
+        Double price = fetchStockPriceWithRetry(ticker);
         if (price != null) {
             priceCache.put(ticker, new CachedPrice(price, currentTime));
-            return price * USD_TO_INR; // Convert to INR before returning
+            return price * USD_TO_INR;
         }
 
-        return cachedPrice != null ? cachedPrice.price * USD_TO_INR : null; // Return cached price if available
+        return cachedPrice != null ? cachedPrice.price * USD_TO_INR : null;
     }
 
-    // Fetch stock price from Alpha Vantage API
-    private Double fetchStockPrice(String ticker) {
-        String url = UriComponentsBuilder.fromUriString(ALPHA_VANTAGE_API_URL)
-                .queryParam("function", "TIME_SERIES_INTRADAY")
-                .queryParam("symbol", ticker)
-                .queryParam("interval", "5min")
-                .queryParam("apikey", apiKey)
-                .toUriString();
+    private Double fetchStockPriceWithRetry(String ticker) {
+        for (int attempt = 0; attempt < 3; attempt++) {
+            try {
+                String url = UriComponentsBuilder.fromUriString(ALPHA_VANTAGE_API_URL)
+                        .queryParam("function", "GLOBAL_QUOTE")
+                        .queryParam("symbol", ticker)
+                        .queryParam("apikey", apiKey)
+                        .toUriString();
 
-        RestTemplate restTemplate = new RestTemplate();
-        try {
-            String response = restTemplate.getForObject(url, String.class);
-            if (response != null) {
-                ObjectMapper objectMapper = new ObjectMapper();
-                JsonNode rootNode = objectMapper.readTree(response);
-                JsonNode timeSeries = rootNode.path("Time Series (5min)");
-                if (timeSeries.isObject() && timeSeries.fieldNames().hasNext()) {
-                    String latestKey = timeSeries.fieldNames().next();
-                    JsonNode latestData = timeSeries.get(latestKey);
-                    return latestData.path("4. close").asDouble(0.0); // Default to 0.0
-                } else {
-                    System.err.println("Invalid or missing time series data for " + ticker);
+                RestTemplate restTemplate = new RestTemplate();
+                String response = restTemplate.getForObject(url, String.class);
+
+                if (response != null) {
+                    ObjectMapper objectMapper = new ObjectMapper();
+                    JsonNode rootNode = objectMapper.readTree(response);
+                    JsonNode quoteNode = rootNode.path("Global Quote");
+
+                    if (!quoteNode.isMissingNode()) {
+                        return quoteNode.path("05. price").asDouble(0.0);
+                    }
                 }
-            } else {
-                System.err.println("Null response received from Alpha Vantage for " + ticker);
+            } catch (Exception e) {
+                System.err.println("Price fetch attempt " + (attempt + 1) + " failed for " + ticker);
+                try {
+                    Thread.sleep(1000); // Wait before retry
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                }
             }
-            
-        } catch (IOException e) {
-            e.printStackTrace();
         }
         return null;
     }
 
-    // CachedPrice inner class to store stock price and timestamp
     private static class CachedPrice {
         Double price;
         long timestamp;
@@ -83,6 +85,30 @@ public class StockPriceService {
         public CachedPrice(Double price, long timestamp) {
             this.price = price;
             this.timestamp = timestamp;
+        }
+    }
+
+    // Optional method for manual price updates
+    public void updateAllStockPrices(Map<String, String> stockTickers) {
+        stockTickers.forEach((name, ticker) -> 
+            executorService.submit(() -> {
+                Double price = getStockPrice(ticker);
+                if (price != null) {
+                    System.out.println(name + ": $" + price);
+                }
+            })
+        );
+    }
+
+    // Shutdown method to be called when application closes
+    public void shutdown() {
+        executorService.shutdown();
+        try {
+            if (!executorService.awaitTermination(800, TimeUnit.MILLISECONDS)) {
+                executorService.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            executorService.shutdownNow();
         }
     }
 }
